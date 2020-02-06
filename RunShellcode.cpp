@@ -58,7 +58,8 @@ int wmain(int argc, WCHAR *argv[])
     }
 
     printf("Opening %S\n", argv[1]);
-    HANDLE hFile = CreateFile(argv[1],               // file to open
+    HANDLE file_handle = CreateFile(
+        argv[1],               // file to open
         GENERIC_READ,          // open for reading
         FILE_SHARE_READ,       // share for reading
         NULL,                  // default security
@@ -66,45 +67,45 @@ int wmain(int argc, WCHAR *argv[])
         FILE_ATTRIBUTE_NORMAL, // normal file
         NULL);                 // no attr. template
 
-    if (hFile == INVALID_HANDLE_VALUE)
+    if (file_handle == INVALID_HANDLE_VALUE)
     {
         DisplayError(TEXT("CreateFile"));
         _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), argv[1]);
         return -1;
     }
 
-    LARGE_INTEGER FileSize;
-    GetFileSizeEx(hFile, &FileSize);
+    LARGE_INTEGER file_size;
+    GetFileSizeEx(file_handle, &file_size);
 
-    DWORD shellcodeSize = FileSize.LowPart;
+    DWORD shellcodeSize = file_size.LowPart;
 
-    BYTE *pRWX = reinterpret_cast<BYTE*>(VirtualAlloc(NULL, shellcodeSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+    BYTE *p_shellcode_buffer = reinterpret_cast<BYTE*>(VirtualAlloc(NULL, shellcodeSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
 
-    if (!pRWX)
+    if (!p_shellcode_buffer)
     {
         printf("Failed to allocate %d\n", shellcodeSize);
         return -1;
     }
 
-    printf("Allocated %d bytes at @%p\n", shellcodeSize, pRWX);
+    printf("Allocated %d bytes at @%p\n", shellcodeSize, p_shellcode_buffer);
 
-    DWORD readBytes;
-    DWORD Offset = 0;
+    DWORD read_bytes;
+    DWORD offset = 0;
     char ReadBuffer[BUFFERSIZE] = { 0 };
-    while (ReadFile(hFile, ReadBuffer, BUFFERSIZE - 1, &readBytes, NULL) == TRUE && readBytes>0)
+    while (ReadFile(file_handle, ReadBuffer, BUFFERSIZE - 1, &read_bytes, NULL) == TRUE && read_bytes>0)
     {
-        printf("Read %d bytes\n", readBytes);
-        memcpy(pRWX + Offset, reinterpret_cast<BYTE*>(ReadBuffer), readBytes);
-        Offset += readBytes;
+        memcpy(p_shellcode_buffer + offset, reinterpret_cast<BYTE*>(ReadBuffer), read_bytes);
+        offset += read_bytes;
     }
 
-    int(*fn)() = (int(__cdecl *)(void))pRWX;
+    printf("Read %d bytes\n", offset);
+    int(*shellcode_ptr)() = (int(__cdecl *)(void))p_shellcode_buffer;
 
-    printf("Calling function pointer: %p\n", fn);
+    printf("Calling function pointer: %p\n", shellcode_ptr);
 
     _asm {
         int 3;
     }
-    fn();
+    shellcode_ptr();
     return 0;
 }
