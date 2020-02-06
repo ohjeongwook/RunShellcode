@@ -9,10 +9,10 @@
 
 #define BUFFERSIZE 1024
 
-void DisplayError(LPTSTR lpszFunction)
+void display_error(LPTSTR lpszFunction)
 {
-    LPVOID lpMsgBuf;
-    LPVOID lpDisplayBuf;
+    LPVOID lp_message_buffer;
+    LPVOID lp_display_buffer;
     DWORD dw = GetLastError();
 
     FormatMessage(
@@ -22,31 +22,31 @@ void DisplayError(LPTSTR lpszFunction)
         NULL,
         dw,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR)&lpMsgBuf,
+        (LPTSTR)&lp_message_buffer,
         0,
         NULL);
 
-    lpDisplayBuf =
+    lp_display_buffer =
         (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-        (lstrlen((LPCTSTR)lpMsgBuf)
+        (lstrlen((LPCTSTR)lp_message_buffer)
             + lstrlen((LPCTSTR)lpszFunction)
             + 40) // account for format string
             * sizeof(TCHAR));
 
-    if (FAILED(StringCchPrintf((LPTSTR)lpDisplayBuf,
-        LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+    if (FAILED(StringCchPrintf((LPTSTR)lp_display_buffer,
+        LocalSize(lp_display_buffer) / sizeof(TCHAR),
         TEXT("%s failed with error code %d as follows:\n%s"),
         lpszFunction,
         dw,
-        lpMsgBuf)))
+        lp_message_buffer)))
     {
         printf("FATAL ERROR: Unable to output error code.\n");
     }
 
-    _tprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
+    _tprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lp_display_buffer);
 
-    LocalFree(lpMsgBuf);
-    LocalFree(lpDisplayBuf);
+    LocalFree(lp_message_buffer);
+    LocalFree(lp_display_buffer);
 }
 
 int wmain(int argc, WCHAR *argv[])
@@ -69,7 +69,7 @@ int wmain(int argc, WCHAR *argv[])
 
     if (file_handle == INVALID_HANDLE_VALUE)
     {
-        DisplayError(TEXT("CreateFile"));
+        display_error(TEXT("CreateFile"));
         _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), argv[1]);
         return -1;
     }
